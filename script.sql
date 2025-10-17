@@ -58,21 +58,38 @@ CREATE TABLE `funcionarios` (
 -- Tabela: Pedidos
 -- Armazena os pedidos feitos pelos clientes.
 -- Adicionei a coluna 'cliente_id' que é essencial para saber quem fez o pedido.
+-- ... (seu script de criação de categorias, produtos, clientes, funcionarios) ...
+
+-- Tabela: Pedidos (MODIFICADA)
+-- Removemos a ligação direta com um único produto.
 CREATE TABLE `pedidos` (
     `idPed` INT AUTO_INCREMENT PRIMARY KEY,
     `data_pedido` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `data_entrega` DATE NOT NULL,
-    `totalPed` DECIMAL(10, 2) NOT NULL,
     `idCli` INT NULL,
-    `idProd` INT NULL,
     CONSTRAINT `fk_pedido_cliente`
         FOREIGN KEY (`idCli`) 
         REFERENCES `clientes`(`idCli`)
-        ON DELETE SET NULL, -- Se o cliente for apagado, o histórico do pedido permanece.
-    CONSTRAINT `idProd`
+        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- NOVA TABELA: itens_pedido
+-- Esta é a tabela de junção que resolve o relacionamento.
+CREATE TABLE `itens_pedido` (
+    `idItem` INT AUTO_INCREMENT PRIMARY KEY,
+    `idPed` INT NOT NULL, -- Chave estrangeira para a tabela 'pedidos'
+    `idProd` INT NOT NULL, -- Chave estrangeira para a tabela 'produtos'
+    `quantidade` INT NOT NULL,
+    `preco_unitario` DECIMAL(10, 2) NOT NULL, -- Guarda o preço do produto NO MOMENTO DA COMPRA
+    
+    CONSTRAINT `fk_item_pedido`
+        FOREIGN KEY (`idPed`) 
+        REFERENCES `pedidos`(`idPed`),
+        
+    CONSTRAINT `fk_item_produto`
         FOREIGN KEY (`idProd`) 
         REFERENCES `produtos`(`idProd`)
-        ON DELETE SET NULL -- Se o produto for apagado, o histórico do pedido permanece.
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -104,6 +121,45 @@ INSERT INTO `funcionarios` (`nomeFunc`, `cpfFunc`, `telefoneFunc`, `emailFunc`) 
 ('Fernanda Lima', '555.444.333-22', '(11) 97777-6666', 'fernanda.lima@empresa.com');
 
 -- Inserindo Pedidos
-INSERT INTO `pedidos` (`data_pedido`, `data_entrega`, `totalPed`, `idCli`, `idProd`) VALUES
-('2025-10-10 14:30:00', '2025-10-15', 120.50, 1, 1), -- Ana pediu um Bolo de Chocolate
-('2025-10-12 18:00:00', '2025-10-14', 90.00, 2, 4); -- Bruno pediu um Cento de Coxinhas
+-- ================================================================= --
+--     INSERINDO DADOS CORRETAMENTE (NOVO MODELO COM ITENS)      --
+-- ================================================================= --
+
+-- Pedido 1: Ana pediu um Bolo de Chocolate
+-- Passo 1: Inserir o "cabeçalho" do pedido na tabela 'pedidos'
+INSERT INTO `pedidos` (`data_pedido`, `data_entrega`, `idCli`) 
+VALUES ('2025-10-10 14:30:00', '2025-10-15', 1);
+
+-- Passo 2: Inserir o item específico na tabela 'itens_pedido'
+-- O idPed '1' corresponde ao pedido que acabamos de criar para a Ana (idCli 1).
+-- O idProd '1' corresponde ao 'Bolo de Chocolate com Morango'.
+INSERT INTO `itens_pedido` (`idPed`, `idProd`, `quantidade`, `preco_unitario`) 
+VALUES (1, 1, 1, 120.50);
+
+
+-- Pedido 2: Bruno pediu um Cento de Coxinhas
+-- Passo 1: Inserir o "cabeçalho" do pedido na tabela 'pedidos'
+INSERT INTO `pedidos` (`data_pedido`, `data_entrega`, `idCli`) 
+VALUES ('2025-10-12 18:00:00', '2025-10-14', 2);
+
+-- Passo 2: Inserir o item específico na tabela 'itens_pedido'
+-- O idPed '2' corresponde ao pedido que acabamos de criar para o Bruno (idCli 2).
+-- O idProd '4' corresponde ao 'Cento de Coxinhas de Frango'.
+INSERT INTO `itens_pedido` (`idPed`, `idProd`, `quantidade`, `preco_unitario`) 
+VALUES (2, 4, 1, 90.00);
+
+
+-- EXEMPLO DE PEDIDO COM MÚLTIPLOS ITENS
+-- Vamos supor que a Ana (idCli 1) fez um novo pedido
+INSERT INTO `pedidos` (`data_pedido`, `data_entrega`, `idCli`) 
+VALUES ('2025-10-16 10:00:00', '2025-10-20', 1);
+
+-- Agora adicionamos os itens para o pedido de id 3 (o que acabamos de criar)
+-- Item 1: Um Bolo de Cenoura (idProd 2)
+INSERT INTO `itens_pedido` (`idPed`, `idProd`, `quantidade`, `preco_unitario`) 
+VALUES (3, 2, 1, 65.00);
+
+-- Item 2: Duas caixas de brigadeiro (idProd 3)
+INSERT INTO `itens_pedido` (`idPed`, `idProd`, `quantidade`, `preco_unitario`) 
+VALUES (3, 3, 2, 45.80);
+
